@@ -46,14 +46,8 @@ class Tempsensor: public Adafruit_SHT31 {
 
     if((currentMillis - lastUpdate) >= (readInterval * 1000)) {
       lastUpdate = millis();
-      float t = readTemperature();
-      float h = readHumidity();
-      if (! isnan(t)) {
-        temp = t;
-      }
-      if (! isnan(h)) {
-        humidity = h;
-      }
+      temp = readTemperature();
+      humidity h = readHumidity();
     }
   }
 
