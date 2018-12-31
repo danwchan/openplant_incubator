@@ -1,5 +1,6 @@
 /*************************************************** 
-  This is an example for the SHT31-D Humidity & Temp Sensor
+  This is an test case to look at the function of the temperature
+  sensor when the entire 
 
   Designed specifically to work with the SHT31-D sensor from Adafruit
   ----> https://www.adafruit.com/products/2857
@@ -12,41 +13,88 @@
 #include <Wire.h>
 #include "Adafruit_SHT31.h"
 
-Adafruit_SHT31 sht31 = Adafruit_SHT31();
+/*
+ *This next section defines a a subclass of the tempurature sensing
+ *hardware as Tempsensor which will hold the information from the last
+ *time the sensor was polled
+ *
+ */
+
+class Tempsensor: public Adafruit_SHT31 {
+  private:
+    byte readInterval;            // the time in seconds between readings
+    unsigned long lastUpdate;     // to store the millis
+
+  public:
+    float temp;                   // to store the tempurature data
+    float humidity;               // to store the humidity data
+
+/*
+ *Constructor, also should call the base class constrcutor
+ *
+ */
+   
+  Tempsensor(byte seconds) {
+    readInterval = seconds;
+    temp = 0;
+    humidity = 0;
+    lastUpdate = millis();
+  }
+
+  void Update() {
+    unsigned long currentMillis = millis();
+
+    if((currentMillis - lastUpdate) >= (readInterval * 1000)) {
+      lastUpdate = millis();
+      float t = readTemperature();
+      float h = readHumidity();
+      if (! isnan(t)) {
+        temp = t;
+      }
+      if (! isnan(h)) {
+        humidity = h;
+      }
+    }
+  }
+
+  void testprint() {
+    unsigned long currentMillis = millis();
+
+    if((currentMillis - lastUpdate) >= (readInterval * 1000)) {
+      Serial.print("Current millis() = "); Serial.println(currentMillis);
+      Serial.print("Millis of last poll = "); Serial.println(lastUpdate);
+      Serial.print("Temp *C = "); Serial.println(temp);
+      Serial.print("Hum. % = "); Serial.println(humidity);
+      Serial.println();
+    }
+  }
+};
+
+Tempsensor testsensor = Tempsensor(2); // initialize the sensor
 
 void setup() {
+
+/*
+ *Set the pins which are attached to other devices to output to
+ *prevent a floating pin which can casues issues
+ *
+ */
   pinMode(4, OUTPUT);
   pinMode(5, OUTPUT);
   pinMode(3, OUTPUT);
   
   Serial.begin(9600);
 
-  while (!Serial)
-    delay(10);     // will pause Zero, Leonardo, etc until serial console opens
-
-  Serial.println("SHT31 test");
-  if (! sht31.begin(0x44)) {   // Set to 0x45 for alternate i2c addr
+  Serial.println("Si7021 test");
+  if (! testsensor.begin()) {   // Set to 0x45 for alternate i2c addr
     Serial.println("Couldn't find SHT31");
-    while (1) delay(1);
+    while (1);
   }
 }
 
 
 void loop() {
-  float t = sht31.readTemperature();
-  float h = sht31.readHumidity();
-
-  if (! isnan(t)) {  // check if 'is not a number'
-    Serial.print("Temp *C = "); Serial.println(t);
-  } else { 
-    Serial.println("Failed to read temperature");
-  }
   
-  if (! isnan(h)) {  // check if 'is not a number'
-    Serial.print("Hum. % = "); Serial.println(h);
-  } else { 
-    Serial.println("Failed to read humidity");
-  }
-  Serial.println();
-  delay(1000);
+  testsensor.testprint();
+  testsensor.Update();
 }
