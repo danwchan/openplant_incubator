@@ -31,12 +31,39 @@ sessionInfo() #for reproducibility
 #+ import-process-data, message=FALSE
 labels <- c("time", "temp", "humidity", "lux", "input", "fan", "output") #comment out this line for the updated code since fan and input are removed from the code
 labels <- c("time", "temp", "humidity", "lux", "output")
-files <- c("180703.LOG", "180704.LOG", "180705.LOG", "180706.LOG","180707.LOG", "180708.LOG", "180709.LOG", "180710.LOG")
+setwd("BowB")
+files <- c("180723.LOG",
+           "180724.LOG",
+           "180725.LOG",
+           "180726.LOG",
+           "180727.LOG",
+           "180728.LOG",
+           "180729.LOG",
+           "180730.LOG",
+           "180731.LOG",
+           "180801.LOG",
+           "180802.LOG",
+           "180803.LOG",
+           "180804.LOG",
+           "180805.LOG",
+           "180806.LOG",
+           "180807.LOG",
+           "180808.LOG",
+           "180809.LOG",
+           "180810.LOG",
+           "180812.LOG",
+           "180813.LOG",
+           "180814.LOG",
+           "180815.LOG",
+           "180816.LOG",
+           "180817.LOG",
+           "180818.LOG",
+           "180819.LOG")
 
 working_data <- lapply(files, read_csv, col_names = labels) %>%
   bind_rows() %>%
   transform(time = as.POSIXct(strptime(time, "%Y%m%d_%H:%M:%S"))) %>%
-  select(-input, -fan) %>% #comment out this line for the updated code since fan and input are removed from the code
+#  select(-input, -fan) %>% #comment out this line for the updated code since fan and input are removed from the code
   gather(measure, value, -time) %>%
   arrange(time, measure)
 
@@ -51,7 +78,7 @@ ggplot(data = working_data, aes(x = time, y = value)) +
   #geom_line(aes(x = rollmean(time, 3, fill = NA), y = rollmean(value, 3, fill = NA), colour = measure)) +
   facet_grid(measure ~ ., scales = "free_y")
 
-ggplot(data = filter(working_data, format(time, "%m%d") == "0707"), aes(x = time, y = value)) +
+ggplot(data = filter(working_data, format(time, "%m%d") == "0818"), aes(x = time, y = value)) +
   geom_line() +
   facet_grid(measure ~ ., scales = "free_y")
 
