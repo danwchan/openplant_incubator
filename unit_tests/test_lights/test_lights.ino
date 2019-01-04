@@ -30,7 +30,7 @@ class Lightsensor: public Adafruit_TSL2561_Unified {
     }
 
   void Configure() {
-    enableAutoRange(true);                                       // set the gain to automatic
+//    enableAutoRange(true);                                       // set the gain to automatic
     setIntegrationTime(TSL2561_INTEGRATIONTIME_101MS);           // set the medium resolution and speed 
   }
 
@@ -118,7 +118,7 @@ class Ledbar {
 
 
 Lightsensor testsensor = Lightsensor(5);    // initialize the sensor
-Ledbar lights = Ledbar(9, 30, 2000);        // initialize the lights
+Ledbar lights = Ledbar(9, 30, 4000);        // initialize the lights
 
 void setup() {
 
