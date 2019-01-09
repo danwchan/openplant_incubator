@@ -73,7 +73,7 @@ void setup() {
  *prevent a floating pin which can casues issues
  *
  */
-  pinMode(4, OUTPUT);
+  pinMode(9, OUTPUT);
   pinMode(5, OUTPUT);
   pinMode(3, OUTPUT);
   

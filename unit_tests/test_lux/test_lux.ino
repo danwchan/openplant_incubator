@@ -81,7 +81,7 @@ void displaySensorDetails(void)
 void setup(void) 
 {
   /* Set the other attached pins so they don't float and cause issues */
-  pinMode(4, OUTPUT);
+  pinMode(9, OUTPUT);
   pinMode(5, OUTPUT);
   pinMode(3, OUTPUT);
   
