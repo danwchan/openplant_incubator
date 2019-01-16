@@ -74,6 +74,7 @@ class Fan {
   void Configure() {
     pinMode(outPin, OUTPUT);
   }
+  
   void set_speed(double output) {
     byteControl = byte(output);                     // ideally will be the PWM output of the PID controller
     OCR2B = map(byteControl, 0, 255, 30, 79);       // fan speed will thus be proportional to the PID output
@@ -83,7 +84,7 @@ class Fan {
 class Peltier: public PID {
   private:
     byte outPin;                // the pin which the peltier control is attached to
-    byte readInterval;  // the time in milliseconds between readings
+    byte readInterval;          // the time in seconds between readings
     unsigned long lastUpdate;
     const double Kp = 150;
     const double Ki = 20;
@@ -97,16 +98,17 @@ class Peltier: public PID {
 
   Peltier(byte pin, byte seconds, double newSetPoint = 25) : PID(&pidInput, &pidOutput, &setPoint, Kp, Ki, Kd, REVERSE) {
     outPin = pin;
-//    pidInput = 100;
+    pidInput = newSetPoint;
 //    pidOutput = 100;
     readInterval = seconds;
     setPoint = newSetPoint;
     lastUpdate = millis();
   }
 
-//  void Configure() {
+  void Configure() {
+    SetTunings(Kp, Ki, Kd);
 //    SetSampleTime(readInterval);
-//  }
+  }
 
   void set_peltier(double newSetPoint) {
     setPoint = newSetPoint;
@@ -128,7 +130,11 @@ class Peltier: public PID {
       }
       else {
         Compute();
-//        Serial.print("PWM output = "); Serial.println(pidOutput);       
+//        bool test = Compute();
+//        Serial.print("PWM output = "); Serial.println(pidOutput);
+//        Serial.print("Did compute run?: "); Serial.println(test);
+//        Serial.print("Kp (via function): "); Serial.println(GetKp());
+//        Serial.print("Kp (via variable call): "); Serial.println(Kp);
       }
       
       analogWrite(outPin, pidOutput);
@@ -142,16 +148,16 @@ class Peltier: public PID {
       Serial.print("Current millis() = "); Serial.println(currentMillis);
       Serial.print("Millis of last poll = "); Serial.println(lastUpdate);
       Serial.print("gap = "); Serial.println(gap);
-      Serial.print("Temp *C = "); Serial.println(pidInput);
+      Serial.print("PID input = "); Serial.println(pidInput);
       Serial.print("PID output = "); Serial.println(pidOutput);
       Serial.println();
     }
   }
 };
 
-Fan testfan = Fan(3);                        // initialize the fan
-Peltier testpeltier = Peltier(5, 2, 23);     // initialize the peltier
-Tempsensor testsensor = Tempsensor(2);       // initialize the sensor
+Fan testfan = Fan(3);                        // initialize the fan (pin)
+Peltier testpeltier = Peltier(5, 2, 23);     // initialize the peltier (pin, update in sec, set point)
+Tempsensor testsensor = Tempsensor(2);       // initialize the sensor (update in sec)
 
 
 /**************************************************************************/
@@ -180,7 +186,7 @@ void setup() {
   }
   
   /*turn the PID on*/
-//  testpeltier.Configure();
+  testpeltier.Configure();
   testpeltier.SetMode(AUTOMATIC); 
 
   testfan.Configure();
