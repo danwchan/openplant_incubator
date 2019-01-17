@@ -25,19 +25,88 @@
 
 class Screen: public Adafruit_SSD1306 {
   private:
-    String fromClock;
-    uint32_t *fromLightsensor;
-    float *fromTempsensor;
-    unsigned int *setLux;
+    uint8_t ic2Address;
+    unsigned long lastUpdated;
+    unsigned long readInterval;  // this is in milliseconds unlike the rest of the sensors which are in seconds
 
   public:
-    unsigned long lastUpdated; 
 
-  Screen() : Adafruit_SSD1306(128, 64, &Wire, -1) { // screen_width, screen_height (in pixels), wire library pointer, oled_reset (pin)
-   }
+  Screen(uint8_t addr, unsigned long millisec = 200) : Adafruit_SSD1306(128, 64, &Wire, -1) { // base class constructor params: screen_width, screen_height (in pixels), wire library pointer, oled_reset (pin)
+    ic2Address = addr;
+    readInterval = millisec;
+    lastUpdated = millis();
+  }
+
+  Configure() {
+    // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
+    if(!display.begin(SSD1306_SWITCHCAPVCC, ic2Address)) {
+      Serial.println(F("SSD1306 allocation failed"));
+      for(;;); // Don't proceed, loop forever
+    }
+  }
+
+  void Update() {
+    unsigned long currentMillis = millis();
+//    Serial.print("Current millis() = "); Serial.println(currentMillis);
+
+    if((currentMillis - lastUpdate) >= (readInterval)) {  // this is in milliseconds unlike the rest of the sensors which are in seconds
+      lastUpdate = millis();
+      clearDisplay();
+
+      setTextSize(1); // Draw 1X-scale text
+      setTextColor(WHITE);
+//      cp437(true);
+
+      setCursor(0, 0);      // the status bar month and day 
+      print(F("MON XX"));
+      setCursor(95, 0);    // the status bar time
+      print(F("XX:XX"));
+
+      /*
+        This is the grid which lays out the set points
+      */
+      setCursor(45, 17);    // the set column label
+      print(F("Set"));
+      setCursor(80, 16);    // the actual column label
+      print(F("Actual"));
+      setCursor(5, 28);     // the light row label
+      println(F("Light"));
+      print(F("(lux)"));
+      setCursor(5, 48);     // the temp row label
+      println(F("Temp")); print(F("(")); write(9); print(F("C)"));
+
+      setCursor(45, 32);    // light set point
+      print(F("XXXX"));
+      setCursor(80, 32);    // light actual level
+      print(F("XXXX"));
+      setCursor(45, 52);    // temp set point
+      print(F("XX"));
+      setCursor(80, 52);    // temp actual level
+      print(F("XX"));
+
+      display();            // write to display
+    }
+  }
+
+  Draw_extra() {
+  /*
+    This code is for some features which have yet to be implemented
+      1) a place to display warnings
+      2) arrows to indicate the adjustments the incubator is making
+  */
+    setTextColor(BLACK, WHITE);// the preferred style to make it pop
+
+    setCursor(0, 8);           // the row for error messages
+    print(F("WARNINGS!!!"));
+
+    setCursor(118, 32);        // the light row position for arrows
+    write(24);                 // an up arrow
+    setCursor(118, 52);        // the temp row position for arrows
+    write(25);                 // a down arrow
+  }
 };
 
-Screen display = Screen();
+Screen display = Screen(0x3C);  // Address 0x3D for 128x64
 
 void setup() {
 
@@ -47,11 +116,7 @@ void setup() {
   
   Serial.begin(9600);
 
-  // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
-  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
-    Serial.println(F("SSD1306 allocation failed"));
-    for(;;); // Don't proceed, loop forever
-  }
+  display.Configure();
 
   // Show initial display buffer contents on the screen --
   // the library initializes this with an Adafruit splash screen.
@@ -71,36 +136,15 @@ void setup() {
 
   dashboard();
   delay(5000);
-//  testdrawstyles();
-//  delay(5000);
-//  testdrawchar();
 }
 
 void loop() {
-  dashboard();
-  delay(5000);
+  display.Update();
 }
 
-
-void testdrawstyles(void) {
-  display.clearDisplay();
-
-  display.setTextSize(1);             // Normal 1:1 pixel scale
-  display.setTextColor(WHITE);        // Draw white text
-  display.setCursor(0,0);             // Start at top-left corner
-  display.println(F("Hello, world!"));
-
-  display.setTextColor(BLACK, WHITE); // Draw 'inverse' text
-  display.println(3.141592);
-
-  display.setTextSize(2);             // Draw 2X-scale text
-  display.setTextColor(WHITE);
-  display.print(F("0x")); display.println(0xDEADBEEF, HEX);
-
-  display.display();
-  delay(2000);
-}
-
+/*
+  This a function for testing the layout of the screen
+*/
 void dashboard(void) {
   display.clearDisplay();
 
@@ -113,34 +157,45 @@ void dashboard(void) {
   display.setCursor(95, 0);
   display.print(F("XX:XX"));
 
-  display.setCursor(45, 17);
+  /*
+    This is the grid which lays out the set points
+  */
+  display.setCursor(45, 17);    // the set column label
   display.print(F("Set"));
-  display.setCursor(80, 16);
+  display.setCursor(80, 16);    // the actual column label
   display.print(F("Actual"));
-  display.setCursor(5, 28);
+  display.setCursor(5, 28);     // the light row label
   display.println(F("Light"));
   display.print(F("(lux)"));
-  display.setCursor(5, 48);
+  display.setCursor(5, 48);     // the temp row label
   display.println(F("Temp"));
-  display.print(F("(")); display.write(9); display.print(F("C)"));
+  display.print(F("("));
+  display.write(9);
+  display.print(F("C)"));
   
-  display.setCursor(45, 32);
+  display.setCursor(45, 32);    // light set point
   display.print(F("XXXX"));
-  display.setCursor(80, 32);
+  display.setCursor(80, 32);    // light actual level
   display.print(F("XXXX"));
-  display.setCursor(45, 52);
+  display.setCursor(45, 52);    // temp set point
   display.print(F("XX"));
-  display.setCursor(80, 52);
+  display.setCursor(80, 52);    // temp actual level
   display.print(F("XX"));
 
-  display.setCursor(0, 8);  
-  display.setTextColor(BLACK, WHITE); 
+  /*
+    This code is for some features which have yet to be implemented
+      1) a place to display warnings
+      2) arrows to indicate the adjustments the incubator is making
+  */
+  display.setTextColor(BLACK, WHITE);// the preferred style to make it pop
+
+  display.setCursor(0, 8);           // the row for error messages
   display.print(F("WARNINGS!!!"));
 
-  display.setCursor(118, 32);   // the light row
-  display.write(24);            // an up arrow
-  display.setCursor(118, 52);   // the temp row
-  display.write(25);            // a down arrow
+  display.setCursor(118, 32);        // the light row position for arrows
+  display.write(24);                 // an up arrow
+  display.setCursor(118, 52);        // the temp row position for arrows
+  display.write(25);                 // a down arrow
 
   display.display();      // Show initial text
 }
