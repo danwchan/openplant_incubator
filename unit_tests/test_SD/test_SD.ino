@@ -27,13 +27,59 @@
 Sd2Card card;
 SdVolume volume;
 SdFile root;
+//
+byte chipPin = 10;
 
-// change this to match your SD shield or module;
-// Arduino Ethernet shield: pin 4
-// Adafruit SD shields and modules: pin 10
-// Sparkfun SD shield: pin 8
-// MKRZero SD: SDCARD_SS_PIN
-const int chipSelect = 10;
+class Sdlogger: public SDClass {
+  private:
+    byte readInterval;
+    byte chipSelect;
+    unsigned long lastUpdate;
+
+  public:
+
+  Sdlogger(byte pin, byte seconds){
+    chipSelect = pin;
+    readInterval = seconds;
+    lastUpdate = millis();
+  }
+
+  void Configure() {
+    // see if the card is present and can be initialized:
+    if (!begin(chipSelect)) {
+      Serial.println("Card failed, or not present");
+      // don't do anything more:
+      while (1);
+    }
+  }
+
+  bool Update(String fileName, String timeID, float temp, float humidity, uint32_t lux, double pidOutput) {
+    unsigned long currentMillis = millis();
+
+    if((currentMillis - lastUpdate) >= (readInterval * 1000)) {
+      lastUpdate = millis();
+      fileName += ".log";
+      File dataFile = open(fileName, FILE_WRITE);
+      //Serial.println(fileName);
+      
+      if (dataFile) {                                                // if the file is available, write to it:
+        dataFile.print(timeID); dataFile.print(", ");
+        dataFile.print(temp); dataFile.print(", ");
+        dataFile.print(humidity); dataFile.print(", ");
+        dataFile.print(lux); dataFile.print(", ");
+        dataFile.println(pidOutput);
+        dataFile.close();
+        return true;
+      }
+      else {                                                         // if the file isn't open, pop up an error:
+        return false;
+      }
+    }
+    return false;
+  }
+};
+
+Sdlogger testlogger = Sdlogger(10, 5);
 
 void setup() {
   // Open serial communications and wait for port to open:
@@ -47,7 +93,8 @@ void setup() {
 
   // we'll use the initialization code from the utility libraries
   // since we're just testing if the card is working!
-  if (!card.init(SPI_HALF_SPEED, chipSelect)) {
+  
+  if (!card.init(SPI_HALF_SPEED, chipPin)) {
     Serial.println("initialization failed. Things to check:");
     Serial.println("* is a card inserted?");
     Serial.println("* is your wiring correct?");
@@ -110,7 +157,14 @@ void setup() {
 
   // list all files in the card with date and size
   root.ls(LS_R | LS_DATE | LS_SIZE);
+  
+
+  //configure the SD logger class
+  testlogger.Configure();
 }
 
 void loop(void) {
+  if (testlogger.Update("file", "time123", 666.00, 0.01, 1234.56, 999)) {
+    Serial.println("file written");
+  }
 }
