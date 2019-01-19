@@ -91,9 +91,10 @@ class Sdlogger: public SDClass {
       String fileName = timeID.substring(2,8);
       fileName += ".log";
       File dataFile = open(fileName, FILE_WRITE);
-      //Serial.println(fileName);
+//      Serial.println(fileName);     
       
       if (dataFile) {                                                // if the file is available, write to it:
+//        Serial.println("writing...");
         dataFile.print(timeID); dataFile.print(", ");
         dataFile.print(*temp); dataFile.print(", ");
         dataFile.print(*humidity); dataFile.print(", ");
@@ -120,13 +121,17 @@ void setup() {
     ; // wait for serial port to connect. Needed for native USB port only
   }
 
+  pinMode(9, OUTPUT);
+  pinMode(5, OUTPUT);
+  pinMode(3, OUTPUT);
+
   testclock.Configure();
   Serial.println("clock variable set");
   if (! testclock.begin()) {
     Serial.println("Couldn't find RTC");
     while (1);
   }
-  
+  /*
   Serial.print("\nInitializing SD card...");
 
   // we'll use the initialization code from the utility libraries
@@ -195,7 +200,7 @@ void setup() {
 
   // list all files in the card with date and size
   root.ls(LS_R | LS_DATE | LS_SIZE);
-  
+  */
 
   //configure the SD logger class
   testlogger.Configure();
