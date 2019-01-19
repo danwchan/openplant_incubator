@@ -22,11 +22,38 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include "RTClib.h"
+
+class Rtclock: public RTC_PCF8523 {
+  private:
+    byte readInterval;            // the time in seconds between readings
+
+  public:
+    DateTime event;        // a structure defined in the RTC library which contains the time
+/*
+ *Constructor, also calls the base class constrcutor
+ *
+ */   
+  Rtclock() {
+  }
+
+  String getTime() {
+    event = now();
+    char buffer[18];
+    snprintf(buffer, 18, "%04d%02d%02d_%02d:%02d:%02d", event.year(), event.month(), event.day(), event.hour(), event.minute(), event.second());
+    return buffer;
+  }
+
+  void Configure() {
+    begin();
+    adjust(DateTime(F(__DATE__), F(__TIME__)));
+  }
+};
 
 class Screen: public Adafruit_SSD1306 {
   private:
     uint8_t ic2Address;
-    unsigned long lastUpdated;
+    unsigned long lastUpdate;
     unsigned long readInterval;  // this is in milliseconds unlike the rest of the sensors which are in seconds
 
   public:
@@ -34,23 +61,24 @@ class Screen: public Adafruit_SSD1306 {
   Screen(uint8_t addr, unsigned long millisec = 200) : Adafruit_SSD1306(128, 64, &Wire, -1) { // base class constructor params: screen_width, screen_height (in pixels), wire library pointer, oled_reset (pin)
     ic2Address = addr;
     readInterval = millisec;
-    lastUpdated = millis();
+    lastUpdate = millis();
   }
 
   Configure() {
     // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
-    if(!display.begin(SSD1306_SWITCHCAPVCC, ic2Address)) {
+    if(!begin(SSD1306_SWITCHCAPVCC, ic2Address)) {
       Serial.println(F("SSD1306 allocation failed"));
       for(;;); // Don't proceed, loop forever
     }
   }
 
-  void Update() {
+  void Update(DateTime *clockEvent, uint32_t *lux, unsigned int *setLux, float *temp, double *setTemp) {
     unsigned long currentMillis = millis();
 //    Serial.print("Current millis() = "); Serial.println(currentMillis);
 
     if((currentMillis - lastUpdate) >= (readInterval)) {  // this is in milliseconds unlike the rest of the sensors which are in seconds
       lastUpdate = millis();
+      
       clearDisplay();
 
       setTextSize(1); // Draw 1X-scale text
@@ -58,9 +86,9 @@ class Screen: public Adafruit_SSD1306 {
 //      cp437(true);
 
       setCursor(0, 0);      // the status bar month and day 
-      print(F("MON XX"));
+      print(clockEvent->month());print(F("/"));print(clockEvent->day());
       setCursor(95, 0);    // the status bar time
-      print(F("XX:XX"));
+      print(clockEvent->hour());print(F(":"));print(clockEvent->minute());
 
       /*
         This is the grid which lays out the set points
@@ -75,14 +103,14 @@ class Screen: public Adafruit_SSD1306 {
       setCursor(5, 48);     // the temp row label
       println(F("Temp")); print(F("(")); write(9); print(F("C)"));
 
-      setCursor(45, 32);    // light set point
-      print(F("XXXX"));
       setCursor(80, 32);    // light actual level
-      print(F("XXXX"));
-      setCursor(45, 52);    // temp set point
-      print(F("XX"));
+      print(*lux);
+      setCursor(45, 32);    // light set point
+      print(*setLux);
       setCursor(80, 52);    // temp actual level
-      print(F("XX"));
+      print(*temp);
+      setCursor(45, 52);    // temp set point
+      print(*setTemp);
 
       display();            // write to display
     }
@@ -107,6 +135,7 @@ class Screen: public Adafruit_SSD1306 {
 };
 
 Screen display = Screen(0x3C);  // Address 0x3D for 128x64
+Rtclock testclock = Rtclock();
 
 void setup() {
 
@@ -116,6 +145,13 @@ void setup() {
   
   Serial.begin(9600);
 
+  testclock.Configure();
+  Serial.println("clock variable set");
+  if (! testclock.begin()) {
+    Serial.println("Couldn't find RTC");
+    while (1);
+  }
+  
   display.Configure();
 
   // Show initial display buffer contents on the screen --
@@ -139,7 +175,14 @@ void setup() {
 }
 
 void loop() {
-  display.Update();
+  uint32_t actualLight = 2000.00;
+  unsigned int setLight = 4000;
+  float actualTemp = 22.22;
+  double setTemp = 25;
+
+  testclock.getTime();
+  
+  display.Update(&testclock.event, &actualLight, &setLight, &actualTemp, &setTemp);
 }
 
 /*
