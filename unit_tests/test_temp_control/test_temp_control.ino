@@ -82,8 +82,11 @@ class Fan {
 };
 
 class Peltier: public PID {
+  
   private:
     byte outPin;                // the pin which the peltier control is attached to
+    byte ncPos;                 // the pin that controls the relay when normally closed has positive voltage
+    byte ncNeg;                 // the pin that controls the relay when normally closed has negative voltage
     byte readInterval;          // the time in seconds between readings
     unsigned long lastUpdate;
     const double Kp = 150;
@@ -96,8 +99,13 @@ class Peltier: public PID {
     double setPoint;
     double gap;
 
-  Peltier(byte pin, byte seconds, double newSetPoint = 25) : PID(&pidInput, &pidOutput, &setPoint, Kp, Ki, Kd, REVERSE) {
+    #define COOL true
+    #define WARM false
+
+  Peltier(byte pin, byte positive, byte negative, byte seconds, double newSetPoint = 25) : PID(&pidInput, &pidOutput, &setPoint, Kp, Ki, Kd, REVERSE) {
     outPin = pin;
+    ncPos = positive;
+    ncNeg = negative;
     pidInput = newSetPoint;
 //    pidOutput = 100;
     readInterval = seconds;
@@ -107,6 +115,10 @@ class Peltier: public PID {
 
   void Configure() {
     SetTunings(Kp, Ki, Kd);
+    pinMode(ncPos, OUTPUT);
+    pinMode(ncNeg, OUTPUT);
+    digitalWrite(ncPos, LOW);
+    digitalWrite(ncNeg, LOW);
 //    SetSampleTime(readInterval);
   }
 
@@ -125,7 +137,14 @@ class Peltier: public PID {
 //      Serial.print("update triggered"); Serial.println();
 //      Serial.print("gap = "); Serial.println(gap);
       
-      if (gap > 1) {
+      if (gap < -0.5  && pidOutput == 0) {
+        toggle_heat(WARM);
+      }
+      else if (gap > 0.5 && pidOutput == 0) {
+        toggle_heat(COOL);
+      }
+      
+      if (abs(gap) > 1.5) {
         pidOutput = 255;
       }
       else {
@@ -137,6 +156,24 @@ class Peltier: public PID {
 //        Serial.print("Kp (via variable call): "); Serial.println(Kp);
       }
       
+      analogWrite(outPin, pidOutput);
+    }
+  }
+
+  void toggle_heat(bool mode) {
+    if (!mode) {                            // for WARM
+      SetControllerDirection(DIRECT);       // set the PID direction
+      analogWrite(outPin, 0);               // turn off the current while the relays swtich
+      digitalWrite(ncPos, HIGH);            // switch the relays away from their normal closed state to the alternate
+      digitalWrite(ncNeg, HIGH);
+      delay(1000);                          // wait for the relay to work
+      analogWrite(outPin, pidOutput);       // before applying the PID again
+    }
+    else {
+      SetControllerDirection(REVERSE);      // for COOL, do the same procedue to set the relays back to their normally closed path
+      digitalWrite(ncPos, LOW);
+      digitalWrite(ncNeg, LOW);
+      delay(1000);
       analogWrite(outPin, pidOutput);
     }
   }
@@ -156,7 +193,7 @@ class Peltier: public PID {
 };
 
 Fan testfan = Fan(3);                        // initialize the fan (pin)
-Peltier testpeltier = Peltier(5, 2, 25);     // initialize the peltier (pin, update in sec, set point)
+Peltier testpeltier = Peltier(5, 7, 6, 2, 24);     // initialize the peltier (pin, postive relay pin, negative relay pin, update in sec, set point)
 Tempsensor testsensor = Tempsensor(2);       // initialize the sensor (update in sec)
 
 
@@ -199,17 +236,19 @@ void setup() {
   delay(1000);
   Serial.print("1"); Serial.println();
   delay(1000);
-  Serial.print("fan low and peltier on"); Serial.println();
+  Serial.print("fan low and peltier cool"); Serial.println();
   analogWrite(5, 255);
   delay(5000);
   Serial.print("fan low and peltier off"); Serial.println();
   analogWrite(5, 0);
   delay(5000);
-  Serial.print("fan high and peltier on"); Serial.println();
+  Serial.print("fan high and peltier warm"); Serial.println();
+  testpeltier.toggle_heat(WARM);
   testfan.set_speed(255);
   analogWrite(5, 255);
   delay(5000);
   testfan.set_speed(0);
+  testpeltier.toggle_heat(COOL);
   analogWrite(5, 0);
   Serial.print("fan test on pin 3 and peltier on pin 5 complete"); Serial.println();
 }
