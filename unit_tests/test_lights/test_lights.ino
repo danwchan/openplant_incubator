@@ -76,13 +76,14 @@ class Ledbar {
     analogWrite(outPin, outPwm);
   }
 
-  void toggle_night() {
-    night = !night;
-    if (night == true) {
+  void set_night(unsigned long dusk, unsigned long dawn, unsigned long present) {
+    if (present >= dusk && present <= dawn) {
       analogWrite(outPin, 0);
+      night = true;
     }
     else {
       analogWrite(outPin, outPwm);
+      night = false;
     }
   }
 
@@ -143,9 +144,6 @@ void loop() {
 //  Serial.print("lux = "); Serial.println(testsensor.Readlux());
   lights.Update(testsensor);
   unsigned long nighttime = millis();
-  if ((nighttime > 40000 && nighttime < 41000) || (nighttime > 70000 && nighttime < 71000)) {
-    lights.toggle_night();
-    Serial.println("night toggled");
-    delay(1000);
-  }
+  lights.set_night(40000, 70000, nighttime);
+//  Serial.println("night toggled");
 }
