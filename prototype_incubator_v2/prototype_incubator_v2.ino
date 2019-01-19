@@ -1,4 +1,4 @@
-//#include <Arduino.h>            // arduino built in functions
+#include <Arduino.h>            // arduino built in functions
 #include <Wire.h>               // i2c library for connecting over SDA and SCL
 #include <SPI.h>                // SPI library for connecting over MOSI, MISO, CLK
 #include <SD.h>                 // SD card wrapper library
@@ -37,7 +37,7 @@ class Screen: public Adafruit_SSD1306 {
     }
   }
 
-  void Update(DateTime *clockEvent, float *lux, unsigned int *setLux, int *temp, double *setTemp) {
+  void Update(DateTime *clockEvent, float *lux, unsigned int *setLux, float *temp, double *setTemp) {
     unsigned long currentMillis = millis();
 //    Serial.print("Current millis() = "); Serial.println(currentMillis);
 
@@ -124,7 +124,7 @@ class Sdlogger: public SDClass {
     }
   }
 
-  bool Update(String timeID, int *temp, int *humidity, float *lux, double *pidOutput) {
+  bool Update(String timeID, float *temp, float *humidity, float *lux, double *pidOutput) {
     unsigned long currentMillis = millis();
 
     if((currentMillis - lastUpdate) >= (readInterval * 1000)) {
@@ -262,8 +262,8 @@ class Tempsensor: public Adafruit_Si7021 {
     unsigned long lastUpdate;     // to store the millis
 
   public:
-    int temp;                     // to store the tempurature data
-    int humidity;                 // to store the humidity data
+    float temp;                     // to store the tempurature data
+    float humidity;                 // to store the humidity data
 
 /*
  *Constructor, also should call the base class constrcutor
@@ -316,8 +316,11 @@ class Fan {
 };
 
 class Peltier: public PID {
+  
   private:
     byte outPin;                // the pin which the peltier control is attached to
+    byte ncPos;                 // the pin that controls the relay when normally closed has positive voltage
+    byte ncNeg;                 // the pin that controls the relay when normally closed has negative voltage
     byte readInterval;          // the time in seconds between readings
     unsigned long lastUpdate;
     const double Kp = 150;
@@ -330,8 +333,13 @@ class Peltier: public PID {
     double setPoint;
     double gap;
 
-  Peltier(byte pin, byte seconds, double newSetPoint = 25) : PID(&pidInput, &pidOutput, &setPoint, Kp, Ki, Kd, REVERSE) {
+    #define COOL true
+    #define WARM false
+
+  Peltier(byte pin, byte positive, byte negative, byte seconds, double newSetPoint = 25) : PID(&pidInput, &pidOutput, &setPoint, Kp, Ki, Kd, REVERSE) {
     outPin = pin;
+    ncPos = positive;
+    ncNeg = negative;
     pidInput = newSetPoint;
 //    pidOutput = 100;
     readInterval = seconds;
@@ -341,6 +349,10 @@ class Peltier: public PID {
 
   void Configure() {
     SetTunings(Kp, Ki, Kd);
+    pinMode(ncPos, OUTPUT);
+    pinMode(ncNeg, OUTPUT);
+    digitalWrite(ncPos, LOW);
+    digitalWrite(ncNeg, LOW);
 //    SetSampleTime(readInterval);
   }
 
@@ -359,7 +371,14 @@ class Peltier: public PID {
 //      Serial.print("update triggered"); Serial.println();
 //      Serial.print("gap = "); Serial.println(gap);
       
-      if (gap > 1) {
+      if (gap < -0.5  && pidOutput == 0) {
+        toggle_heat(WARM);
+      }
+      else if (gap > 0.5 && pidOutput == 0) {
+        toggle_heat(COOL);
+      }
+      
+      if (abs(gap) > 1.5) {
         pidOutput = 255;
       }
       else {
@@ -371,6 +390,24 @@ class Peltier: public PID {
 //        Serial.print("Kp (via variable call): "); Serial.println(Kp);
       }
       
+      analogWrite(outPin, pidOutput);
+    }
+  }
+
+  void toggle_heat(bool mode) {
+    if (!mode) {                            // for WARM
+      SetControllerDirection(DIRECT);       // set the PID direction
+      analogWrite(outPin, 0);               // turn off the current while the relays swtich
+      digitalWrite(ncPos, HIGH);            // switch the relays away from their normal closed state to the alternate
+      digitalWrite(ncNeg, HIGH);
+      delay(1000);                          // wait for the relay to work
+      analogWrite(outPin, pidOutput);       // before applying the PID again
+    }
+    else {
+      SetControllerDirection(REVERSE);      // for COOL, do the same procedue to set the relays back to their normally closed path
+      digitalWrite(ncPos, LOW);
+      digitalWrite(ncNeg, LOW);
+      delay(1000);
       analogWrite(outPin, pidOutput);
     }
   }
@@ -402,14 +439,14 @@ class Rtclock: public RTC_PCF8523 {
   }
 };
 
-Rtclock RTC = Rtclock();                    // initialize the RTC
-Fan CPUfan = Fan(3);                        // initialize the fan (pin)
-Peltier Heatercooler = Peltier(5, 2, 25);   // initialize the peltier (pin, update in sec, set point)
-Tempsensor Tempbreakout = Tempsensor(2);    // initialize the sensor (update in sec)
-Lightsensor Luxbreakout = Lightsensor(5);   // initialize the sensor (update in sec)
-Ledbar Lights = Ledbar(9, 30, 4000);        // initialize the lights (pin, update in sec, set point)
-Sdlogger Logger = Sdlogger(10, 2);          // initialize the SD card (CS pin, update in sec)
-//Screen Display = Screen(0x3C);              // initialize the OLED display (IC2 Address 0x3D for 128x64)
+Rtclock RTC = Rtclock();                          // initialize the RTC
+Fan CPUfan = Fan(3);                              // initialize the fan (pin)
+Peltier Heatercooler = Peltier(5, 7, 6, 2, 25);   // initialize the peltier (pin, update in sec, set point)
+Tempsensor Tempbreakout = Tempsensor(2);          // initialize the sensor (update in sec)
+Lightsensor Luxbreakout = Lightsensor(5);         // initialize the sensor (update in sec)
+Ledbar Lights = Ledbar(9, 30, 4000);              // initialize the lights (pin, update in sec, set point)
+Sdlogger Logger = Sdlogger(10, 2);                // initialize the SD card (CS pin, update in sec)
+//Screen Display = Screen(0x3C);                  // initialize the OLED display (IC2 Address 0x3D for 128x64)
 
 void setup () {
   
@@ -426,7 +463,7 @@ void setup () {
   RTC.Configure();
 //  Serial.println("clock variable set");
   if (! RTC.begin()) {
-//    Serial.println("Couldn't find RTC");
+    Serial.println("Couldn't find RTC");
     while (1);
   }
   Serial.print("The time string is: "); Serial.print(RTC.getTime());
