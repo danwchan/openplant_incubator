@@ -156,7 +156,7 @@ class Peltier: public PID {
 };
 
 Fan testfan = Fan(3);                        // initialize the fan (pin)
-Peltier testpeltier = Peltier(5, 2, 23);     // initialize the peltier (pin, update in sec, set point)
+Peltier testpeltier = Peltier(5, 2, 25);     // initialize the peltier (pin, update in sec, set point)
 Tempsensor testsensor = Tempsensor(2);       // initialize the sensor (update in sec)
 
 
