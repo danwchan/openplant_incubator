@@ -83,7 +83,7 @@ class Sdlogger: public SDClass {
     }
   }
 
-  bool Update(String timeID, float *temp, float *humidity, uint32_t *lux, double *pidOutput) {
+  bool Update(String timeID, float *temp, float *humidity, float *lux, double *pidOutput) {
     unsigned long currentMillis = millis();
 
     if((currentMillis - lastUpdate) >= (readInterval * 1000)) {
@@ -204,7 +204,7 @@ void setup() {
 void loop(void) {
   float temp = 666.00;
   float humidity = 0.01;
-  uint32_t lux = 1234.56;
+  float lux = 1234.56;
   double pidOutput = 999;
   
   if (testlogger.Update(testclock.getTime(), &temp, &humidity, &lux, &pidOutput)) {
