@@ -123,8 +123,9 @@ Ledbar lights = Ledbar(9, 30, 4000);        // initialize the lights
 
 void setup() {
 
-  pinMode(5, OUTPUT);
   pinMode(3, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(7, OUTPUT);
   Serial.begin(9600);
   
   while (!Serial)

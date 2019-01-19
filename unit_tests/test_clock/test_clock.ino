@@ -40,6 +40,8 @@ void setup () {
   pinMode(9, OUTPUT);
   pinMode(5, OUTPUT);
   pinMode(3, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(7, OUTPUT);
   
 #ifndef ESP8266
   while (!Serial); // for Leonardo/Micro/Zero

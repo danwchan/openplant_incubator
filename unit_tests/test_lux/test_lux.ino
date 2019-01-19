@@ -84,6 +84,8 @@ void setup(void)
   pinMode(9, OUTPUT);
   pinMode(5, OUTPUT);
   pinMode(3, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(7, OUTPUT);
   
   Serial.begin(9600);
   Serial.println("Light Sensor Test"); Serial.println("");
