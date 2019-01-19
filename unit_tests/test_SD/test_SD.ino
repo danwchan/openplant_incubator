@@ -22,6 +22,9 @@
 // include the SD library:
 #include <SPI.h>
 #include <SD.h>
+// inlclude the RTC libraries
+#include <Wire.h>
+#include "RTClib.h"
 
 // set up variables using the SD utility library functions:
 Sd2Card card;
@@ -29,6 +32,33 @@ SdVolume volume;
 SdFile root;
 //
 byte chipPin = 10;
+
+class Rtclock: public RTC_PCF8523 {
+  private:
+    byte readInterval;            // the time in seconds between readings
+
+  public:
+    DateTime event;        // a structure defined in the RTC library which contains the time
+/*
+ *Constructor, also calls the base class constrcutor
+ *
+ */   
+  Rtclock() {
+  }
+
+  String getTime() {
+    event = now();
+    char buffer[18];
+    snprintf(buffer, 18, "%04d%02d%02d_%02d:%02d:%02d", event.year(), event.month(), event.day(), event.hour(), event.minute(), event.second());
+    return buffer;
+  }
+
+  void Configure() {
+    begin();
+    adjust(DateTime(F(__DATE__), F(__TIME__)));
+  }
+};
+
 
 class Sdlogger: public SDClass {
   private:
@@ -53,21 +83,22 @@ class Sdlogger: public SDClass {
     }
   }
 
-  bool Update(String fileName, String timeID, float temp, float humidity, uint32_t lux, double pidOutput) {
+  bool Update(String timeID, float *temp, float *humidity, uint32_t *lux, double *pidOutput) {
     unsigned long currentMillis = millis();
 
     if((currentMillis - lastUpdate) >= (readInterval * 1000)) {
       lastUpdate = millis();
+      String fileName = timeID.substring(2,8);
       fileName += ".log";
       File dataFile = open(fileName, FILE_WRITE);
       //Serial.println(fileName);
       
       if (dataFile) {                                                // if the file is available, write to it:
         dataFile.print(timeID); dataFile.print(", ");
-        dataFile.print(temp); dataFile.print(", ");
-        dataFile.print(humidity); dataFile.print(", ");
-        dataFile.print(lux); dataFile.print(", ");
-        dataFile.println(pidOutput);
+        dataFile.print(*temp); dataFile.print(", ");
+        dataFile.print(*humidity); dataFile.print(", ");
+        dataFile.print(*lux); dataFile.print(", ");
+        dataFile.println(*pidOutput);
         dataFile.close();
         return true;
       }
@@ -80,6 +111,7 @@ class Sdlogger: public SDClass {
 };
 
 Sdlogger testlogger = Sdlogger(10, 5);
+Rtclock testclock = Rtclock();
 
 void setup() {
   // Open serial communications and wait for port to open:
@@ -88,7 +120,13 @@ void setup() {
     ; // wait for serial port to connect. Needed for native USB port only
   }
 
-
+  testclock.Configure();
+  Serial.println("clock variable set");
+  if (! testclock.begin()) {
+    Serial.println("Couldn't find RTC");
+    while (1);
+  }
+  
   Serial.print("\nInitializing SD card...");
 
   // we'll use the initialization code from the utility libraries
@@ -164,7 +202,12 @@ void setup() {
 }
 
 void loop(void) {
-  if (testlogger.Update("file", "time123", 666.00, 0.01, 1234.56, 999)) {
+  float temp = 666.00;
+  float humidity = 0.01;
+  uint32_t lux = 1234.56;
+  double pidOutput = 999;
+  
+  if (testlogger.Update(testclock.getTime(), &temp, &humidity, &lux, &pidOutput)) {
     Serial.println("file written");
   }
 }
