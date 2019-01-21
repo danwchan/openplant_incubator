@@ -4,7 +4,7 @@
 #include <SD.h>                 // SD card wrapper library
 #include "RTClib.h"             // Date and time functions using a DS1307 RTC connected via I2C and Wire lib
 #include <PID_v1.h>             // PID library
-#include <Adafruit_Si7021.h>    // tempurature sensor library
+#include "Adafruit_SHT31.h"    // tempurature sensor library
 #include <Adafruit_Sensor.h>    // Adafruit unified sensor library
 #include <Adafruit_TSL2561_U.h> // light sensor library
 //#include <Adafruit_GFX.h>       // Adafruit graphics library
@@ -132,7 +132,7 @@ class Sdlogger: public SDClass {
       String fileName = timeID.substring(2,8);
       fileName += ".log";
       File dataFile = open(fileName, FILE_WRITE);
-      //Serial.println(fileName);
+//      Serial.println(fileName);
       
       if (dataFile) {                                                // if the file is available, write to it:
         dataFile.print(timeID); dataFile.print(", ");
@@ -141,6 +141,7 @@ class Sdlogger: public SDClass {
         dataFile.print(*lux); dataFile.print(", ");
         dataFile.println(*pidOutput);
         dataFile.close();
+        Serial.print("data written to: "); Serial.println(fileName);
         return true;
       }
       else {                                                         // if the file isn't open, pop up an error:
@@ -228,17 +229,13 @@ class Ledbar {
       lastUpdate = millis();
 //      Serial.println("inside first if");    
       if (night == false) {                                                          // [and] if the night is not toggled
-//        Serial.println(setLux < measuredLux);
-//        Serial.println(setLux > measuredLux);
-//        Serial.println(abs(setLux - measuredLux));
-//        Serial.println(abs(setLux - measuredLux) >= 20);
-        while ((setLux < measuredLux) && (abs(setLux - measuredLux) >= 20)) {       // adjust the PWM on the transistor for the LED downwards if the light are too high
+        while ((setLux < measuredLux) && (abs(setLux - measuredLux) >= 20)) {        // adjust the PWM on the transistor for the LED downwards if the light are too high
           analogWrite(outPin, --outPwm);
           measuredLux = sensor.Readlux();
 //          delay(1000);
 //          Serial.print(measuredLux); Serial.println(": going down");
         }
-        while ((setLux > measuredLux) && (abs(setLux - measuredLux) >= 20)) {       // adjust the PWM on the transistor for the LED upward if the lights are too low
+        while ((setLux > measuredLux) && (abs(setLux - measuredLux) >= 20)) {        // adjust the PWM on the transistor for the LED upward if the lights are too low
           analogWrite(outPin, ++outPwm);
           measuredLux = sensor.Readlux();
 //          delay(1000);
@@ -256,7 +253,7 @@ class Ledbar {
  *
  */
 
-class Tempsensor: public Adafruit_Si7021 {
+class Tempsensor: public Adafruit_SHT31 {
   private:
     byte readInterval;            // the time in seconds between readings
     unsigned long lastUpdate;     // to store the millis
@@ -282,6 +279,7 @@ class Tempsensor: public Adafruit_Si7021 {
 //    Serial.print("Current millis() = "); Serial.println(currentMillis);
 
     if((currentMillis - lastUpdate) >= (readInterval * 1000)) {
+//      Serial.println("temperature sesnsor polling...");
       lastUpdate = millis();
       temp = readTemperature();
       humidity = readHumidity();
@@ -362,13 +360,12 @@ class Peltier: public PID {
 
   void Update(Tempsensor sensor) {
     unsigned long currentMillis = millis();
-//    Serial.print("inside update"); Serial.println();
 
     if((currentMillis - lastUpdate) >= (readInterval * 1000)) {
       lastUpdate = millis();
       pidInput = sensor.temp;
       gap = pidInput - setPoint;
-//      Serial.print("update triggered"); Serial.println();
+//      Serial.print("peltier update triggered"); Serial.println();
 //      Serial.print("gap = "); Serial.println(gap);
       
       if (gap < -0.5  && pidOutput == 0) {
@@ -384,7 +381,8 @@ class Peltier: public PID {
       else {
         Compute();
 //        bool test = Compute();
-//        Serial.print("PWM output = "); Serial.println(pidOutput);
+        Serial.print("PWM intput = "); Serial.println(pidInput);
+        Serial.print("PWM output = "); Serial.println(pidOutput);
 //        Serial.print("Did compute run?: "); Serial.println(test);
 //        Serial.print("Kp (via function): "); Serial.println(GetKp());
 //        Serial.print("Kp (via variable call): "); Serial.println(Kp);
@@ -411,6 +409,21 @@ class Peltier: public PID {
       analogWrite(outPin, pidOutput);
     }
   }
+
+/*
+    void testprint() {
+    unsigned long currentMillis = millis();
+
+    if((currentMillis - lastUpdate) >= (readInterval * 1000)) {
+      Serial.print("Current millis() = "); Serial.println(currentMillis);
+      Serial.print("Millis of last poll = "); Serial.println(lastUpdate);
+      Serial.print("gap = "); Serial.println(gap);
+      Serial.print("PID input = "); Serial.println(pidInput);
+      Serial.print("PID output = "); Serial.println(pidOutput);
+      Serial.println();
+    }
+  }
+*/
 };
 
 class Rtclock: public RTC_PCF8523 {
@@ -441,10 +454,10 @@ class Rtclock: public RTC_PCF8523 {
 
 Rtclock RTC = Rtclock();                          // initialize the RTC
 Fan CPUfan = Fan(3);                              // initialize the fan (pin)
-Peltier Heatercooler = Peltier(5, 7, 6, 2, 25);   // initialize the peltier (pin, update in sec, set point)
+Peltier Heatercooler = Peltier(5, 7, 6, 2, 21);   // initialize the peltier (pin, update in sec, set point)
 Tempsensor Tempbreakout = Tempsensor(2);          // initialize the sensor (update in sec)
 Lightsensor Luxbreakout = Lightsensor(5);         // initialize the sensor (update in sec)
-Ledbar Lights = Ledbar(9, 30, 4000);              // initialize the lights (pin, update in sec, set point)
+Ledbar Lights = Ledbar(9, 30, 3800);              // initialize the lights (pin, update in sec, set point)
 Sdlogger Logger = Sdlogger(10, 2);                // initialize the SD card (CS pin, update in sec)
 //Screen Display = Screen(0x3C);                  // initialize the OLED display (IC2 Address 0x3D for 128x64)
 
@@ -502,6 +515,7 @@ void setup () {
 void loop () {
   Tempbreakout.Update();                      // the temperature sensor polls the tempurature
   Heatercooler.Update(Tempbreakout);          // the peltier responds to the tempurature
+//  Heatercooler.testprint();
   CPUfan.set_speed(Heatercooler.pidOutput);   // the fan speed is set proportionally to the pidOutput
   Luxbreakout.Update();                       // the light sensor polls the lux level
   Lights.Update(Luxbreakout);                 // the LEDs respond to the lux level
@@ -512,6 +526,5 @@ void loop () {
   // below the OLED screen is updated with information
 //   Display.Update(&RTC.event, &Luxbreakout.event.light, &Lights.setLux, &Tempbreakout.temp, &Heatercooler.setPoint);
   
-
   Lights.set_night(4, 12, RTC.event.hour());  // toggle the night at midnight and toggle it back at 4AM
 }
