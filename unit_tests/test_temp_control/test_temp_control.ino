@@ -1,7 +1,7 @@
 #include <PID_v1.h>
 #include <Arduino.h>
 #include <Wire.h>
-#include <Adafruit_Si7021.h>
+#include "Adafruit_SHT31.h"
 
 /*
  *This next section defines a a subclass of the tempurature sensing
@@ -10,7 +10,7 @@
  *
  */
 
-class Tempsensor: public Adafruit_Si7021 {
+class Tempsensor: public Adafruit_SHT31 {
   private:
     byte readInterval;            // the time in seconds between readings
     unsigned long lastUpdate;     // to store the millis
@@ -193,7 +193,7 @@ class Peltier: public PID {
 };
 
 Fan testfan = Fan(3);                        // initialize the fan (pin)
-Peltier testpeltier = Peltier(5, 7, 6, 2, 24);     // initialize the peltier (pin, postive relay pin, negative relay pin, update in sec, set point)
+Peltier testpeltier = Peltier(5, 7, 6, 2, 21);     // initialize the peltier (pin, postive relay pin, negative relay pin, update in sec, set point)
 Tempsensor testsensor = Tempsensor(2);       // initialize the sensor (update in sec)
 
 
