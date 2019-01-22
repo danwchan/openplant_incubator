@@ -1,20 +1,30 @@
-#include <Arduino.h>            // arduino built in functions
-#include <Wire.h>               // i2c library for connecting over SDA and SCL
-#include <SPI.h>                // SPI library for connecting over MOSI, MISO, CLK
-#include <SD.h>                 // SD card wrapper library
-#include "RTClib.h"             // Date and time functions using a DS1307 RTC connected via I2C and Wire lib
-#include <PID_v1.h>             // PID library
-#include "Adafruit_SHT31.h"    // tempurature sensor library
-#include <Adafruit_Sensor.h>    // Adafruit unified sensor library
-#include <Adafruit_TSL2561_U.h> // light sensor library
-//#include <Adafruit_GFX.h>       // Adafruit graphics library
-//#include <Adafruit_SSD1306.h>   // OLED display library
+#include <Arduino.h>             // arduino built in functions
+#include <Wire.h>                // i2c library for connecting over SDA and SCL
+#include <SPI.h>                 // SPI library for connecting over MOSI, MISO, CLK
+#include <SD.h>                  // SD card wrapper library
+#include "RTClib.h"              // Date and time functions using a DS1307 RTC connected via I2C and Wire lib
+#include <PID_v1.h>              // PID library
+#include "Adafruit_SHT31.h"      // tempurature sensor library
+#include <Adafruit_Sensor.h>     // Adafruit unified sensor library
+#include <Adafruit_TSL2561_U.h>  // light sensor library
+//#include <Adafruit_GFX.h>        // Adafruit graphics library
+//#include <Adafruit_SSD1306.h>    // OLED display library
 
 //#if defined(ARDUINO_ARCH_SAMD)
 // for Zero, output on USB Serial console, remove line below if using programming port to program the Zero!
 //   #define Serial SerialUSB
 //#endif
+
 /*
+ * Classes which govern the various components
+ * many are wrapping the breakout board classes adding in attributes to store readings
+ * and implementing methods which represent the functionality of the incubator.
+ * This classes in this section will have to be modified and the correct libraries loaded
+ * for working with alternative hardware
+ */
+
+/* COMMENT OUT THE OLED UNTIL AT MEGA IS USED
+
 class Screen: public Adafruit_SSD1306 {
   private:
     uint8_t ic2Address;
@@ -101,6 +111,7 @@ class Screen: public Adafruit_SSD1306 {
   
 };
 */
+
 class Sdlogger: public SDClass {
   private:
     byte readInterval;
@@ -410,7 +421,8 @@ class Peltier: public PID {
     }
   }
 
-/*
+/* a debugging method
+
     void testprint() {
     unsigned long currentMillis = millis();
 
@@ -452,14 +464,25 @@ class Rtclock: public RTC_PCF8523 {
   }
 };
 
+/*
+ * These next lines instatiate the classes as the components of the incubator specifying 
+ * the connections, the set points and update frequency. This section will likely need to be updated
+ * if one wants it to behave differently
+ */
+
 Rtclock RTC = Rtclock();                          // initialize the RTC
 Fan CPUfan = Fan(3);                              // initialize the fan (pin)
-Peltier Heatercooler = Peltier(5, 7, 6, 2, 21);   // initialize the peltier (pin, update in sec, set point)
-Tempsensor Tempbreakout = Tempsensor(2);          // initialize the sensor (update in sec)
-Lightsensor Luxbreakout = Lightsensor(5);         // initialize the sensor (update in sec)
-Ledbar Lights = Ledbar(9, 30, 3800);              // initialize the lights (pin, update in sec, set point)
-Sdlogger Logger = Sdlogger(10, 2);                // initialize the SD card (CS pin, update in sec)
+Peltier Heatercooler = Peltier(5, 7, 6, 2, 21);   // initialize the peltier (PWM control pin, relay NC + pin, relay NC - pin, update frequency [sec], set point [C])
+Tempsensor Tempbreakout = Tempsensor(2);          // initialize the sensor (update frequency [sec])
+Lightsensor Luxbreakout = Lightsensor(5);         // initialize the sensor (update frequency [sec])
+Ledbar Lights = Ledbar(9, 30, 3800);              // initialize the lights (pin, update frequency [sec], set point [lux])
+Sdlogger Logger = Sdlogger(10, 2);                // initialize the SD card (CS pin, update frequency [sec])
 //Screen Display = Screen(0x3C);                  // initialize the OLED display (IC2 Address 0x3D for 128x64)
+
+/*
+ * The setup section contains the commnds to configure the hardware compontents
+ * It also starts the serial connection which may be used for debugging
+ */
 
 void setup () {
   
@@ -511,6 +534,11 @@ void setup () {
 //  Serial.println("Configure the OLED display");
 //  Display.Configure();
 }
+
+/*
+ * The loop section contains the command which are running during the operation of the incubator
+ * This section may also need to be modified to adjust the exact operation... 
+ */
 
 void loop () {
   Tempbreakout.Update();                      // the temperature sensor polls the tempurature
