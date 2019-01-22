@@ -102,9 +102,13 @@ These are parts which form the bulk of the incubator which you likely will have 
 
 	This breakout is a buck DC-DC voltage converter which works to step down voltage using high frequency switching. In this design it is useful because it has a potentiometer which controls the final output voltage allowing me to manually set the brightness of the LED light source in the hardware. It also shares some of the thermal load of voltage step down from the 12V source with the voltage regulator on the micro-controller board. A maximum of 3A can pass through this module. I'm not sure if this is really required in he final build as presumably the 12V can be directly regulated on the micro-controller board and the transistor which controls the LEDs can be fed a PWM signal which corresponds to the desired light level. Also please note how awkwardly spaced the pins are on this board so you have to solder headers on kinda crooked to fit into a breadboard/perfboard.
 	
-* **Relay (2-channel)**, [generic][34]
+* **Relay**, [2-channel][34]
 	
 	I orginially wanted to use an H-bridge availble for many hobby robotics projects to reverse the polarity on the peltier devices, but the current running through them in parallel is too high for the cheap ones that are all around. Instead of sourcing some diodes and transistors to build my own (or finding a suitable IC solution) I opted to use a 2-channel relay. When the relay is not engaged the wires attached to the "normally closed" leads complete the circut and while the relay is engaged the circut is formed on the "normally open" leads. The code is made to stop current flow while the relay switching over as it talks a few milliseconds and I don't want to arc or short the relays.
+	
+* **OLED screen**, [128x64 blue and yellow][35]
+
+    The code for displaying the set and actual tempuratures can't be uploaded to a Arduino Uno because ti makes the code too big. I made the interface with the idea that the top 16 pixels would be yellow and the rest are blue, but it works in a full monochrome. There is also an orphaned function which is intended to be expanded to provide the adjustment direction and warning messages.
 
 * **Power supply**, [12V 360W Switching][20]
 
@@ -185,3 +189,4 @@ Some ideas and priorities for future work on this project:
 [32]: https://www.allelectronics.com/category/455/perf-boards/1.html (perf board)
 [33]: https://makezine.com/2009/07/27/lost-knowledge-wire-wrapping/ (wire wrap)
 [34]: https://tinkersphere.com/power/1247-2-channel-relay-module.html (relay)
+[35]: https://tinkersphere.com/oled-displays/804-yellow-blue-oled-module.html (OLED)
