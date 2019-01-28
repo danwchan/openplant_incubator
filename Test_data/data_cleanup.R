@@ -31,34 +31,10 @@ sessionInfo() #for reproducibility
 #+ import-process-data, message=FALSE
 labels <- c("time", "temp", "humidity", "lux", "input", "fan", "output") #comment out this line for the updated code since fan and input are removed from the code
 labels <- c("time", "temp", "humidity", "lux", "output")
-setwd("BowB")
-files <- c("180723.LOG",
-           "180724.LOG",
-           "180725.LOG",
-           "180726.LOG",
-           "180727.LOG",
-           "180728.LOG",
-           "180729.LOG",
-           "180730.LOG",
-           "180731.LOG",
-           "180801.LOG",
-           "180802.LOG",
-           "180803.LOG",
-           "180804.LOG",
-           "180805.LOG",
-           "180806.LOG",
-           "180807.LOG",
-           "180808.LOG",
-           "180809.LOG",
-           "180810.LOG",
-           "180812.LOG",
-           "180813.LOG",
-           "180814.LOG",
-           "180815.LOG",
-           "180816.LOG",
-           "180817.LOG",
-           "180818.LOG",
-           "180819.LOG")
+setwd("./BwoB_incubator_v2/Revamped_code/")
+files <- c("190124.LOG",
+           "190125.LOG",
+           "190126.LOG")
 
 working_data <- lapply(files, read_csv, col_names = labels) %>%
   bind_rows() %>%
@@ -78,8 +54,10 @@ ggplot(data = working_data, aes(x = time, y = value)) +
   #geom_line(aes(x = rollmean(time, 3, fill = NA), y = rollmean(value, 3, fill = NA), colour = measure)) +
   facet_grid(measure ~ ., scales = "free_y")
 
-ggplot(data = filter(working_data, format(time, "%m%d") == "0818"), aes(x = time, y = value)) +
+ggplot(data = filter(working_data, format(time, "%m%d") == "0125"), aes(x = time, y = value)) +
   geom_line() +
   facet_grid(measure ~ ., scales = "free_y")
 
-#' zoom into the interesting features on July 7
+#' zoom into the interesting features on January 25
+#' 
+#' The PID constants are off it reaches maximum too quickly
