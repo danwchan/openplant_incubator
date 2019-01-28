@@ -266,7 +266,7 @@ class Ledbar {
 
 class Tempsensor: public Adafruit_SHT31 {
   private:
-    byte readInterval;            // the time in seconds between readings
+    unsigned long readInterval;            // the time in seconds between readings
     unsigned long lastUpdate;     // to store the millis
 
   public:
@@ -278,7 +278,7 @@ class Tempsensor: public Adafruit_SHT31 {
  *
  */
    
-  Tempsensor(byte seconds) {
+  Tempsensor(unsigned long seconds) {
     readInterval = seconds;
     temp = 0;
     humidity = 0;
@@ -289,7 +289,7 @@ class Tempsensor: public Adafruit_SHT31 {
     unsigned long currentMillis = millis();
 //    Serial.print("Current millis() = "); Serial.println(currentMillis);
 
-    if((currentMillis - lastUpdate) >= (readInterval * 1000)) {
+    if((currentMillis - lastUpdate) >= (readInterval)) {
 //      Serial.println("temperature sesnsor polling...");
       lastUpdate = millis();
       temp = readTemperature();
@@ -324,16 +324,17 @@ class Fan {
   }
 };
 
+
 class Peltier: public PID {
   
   private:
     byte outPin;                // the pin which the peltier control is attached to
     byte ncPos;                 // the pin that controls the relay when normally closed has positive voltage
     byte ncNeg;                 // the pin that controls the relay when normally closed has negative voltage
-    byte readInterval;          // the time in seconds between readings
+    unsigned long readInterval;          // the time in milliseconds between readings
     unsigned long lastUpdate;
-    const double Kp = 150;
-    const double Ki = 20;
+    const double Kp = 100;
+    const double Ki = 15;
     const double Kd = 1;
 
   public:
@@ -345,7 +346,7 @@ class Peltier: public PID {
     #define COOL true
     #define WARM false
 
-  Peltier(byte pin, byte positive, byte negative, byte seconds, double newSetPoint = 25) : PID(&pidInput, &pidOutput, &setPoint, Kp, Ki, Kd, REVERSE) {
+  Peltier(byte pin, byte positive, byte negative, unsigned long seconds, double newSetPoint = 25) : PID(&pidInput, &pidOutput, &setPoint, Kp, Ki, Kd, REVERSE) {
     outPin = pin;
     ncPos = positive;
     ncNeg = negative;
@@ -371,51 +372,64 @@ class Peltier: public PID {
 
   void Update(Tempsensor sensor) {
     unsigned long currentMillis = millis();
+//    Serial.print("inside update"); Serial.println();
 
-    if((currentMillis - lastUpdate) >= (readInterval * 1000)) {
+    if((currentMillis - lastUpdate) >= (readInterval)) {
       lastUpdate = millis();
       pidInput = sensor.temp;
       gap = pidInput - setPoint;
-//      Serial.print("peltier update triggered"); Serial.println();
+//      Serial.print("update triggered"); Serial.println();
 //      Serial.print("gap = "); Serial.println(gap);
       
-      if (gap < -0.5  && pidOutput == 0) {
+      if (gap < -2  && pidOutput == 0) {
         toggle_heat(WARM);
       }
-      else if (gap > 0.5 && pidOutput == 0) {
+      else if (gap > 2 && pidOutput == 0) {
         toggle_heat(COOL);
       }
-      
-      if (abs(gap) > 1.5) {
+
+/*      
+      if (gap > 10) {
         pidOutput = 255;
+        toggle_heat(COOL);
+      }
+      else if (gap < -5) {
+        pidOutput = 255;
+        toggle_heat(WARM);
       }
       else {
+*/      
         Compute();
 //        bool test = Compute();
-        Serial.print("PWM intput = "); Serial.println(pidInput);
-        Serial.print("PWM output = "); Serial.println(pidOutput);
+//        Serial.print("PWM output = "); Serial.println(pidOutput);
 //        Serial.print("Did compute run?: "); Serial.println(test);
+//        Serial.print("PID direction = "); Serial.println(GetDirection());
 //        Serial.print("Kp (via function): "); Serial.println(GetKp());
 //        Serial.print("Kp (via variable call): "); Serial.println(Kp);
-      }
+//      }
       
       analogWrite(outPin, pidOutput);
+//      Serial.print("PWM Input = "); Serial.println(pidInput);
+
     }
   }
 
   void toggle_heat(bool mode) {
-    if (!mode) {                            // for WARM
-      SetControllerDirection(DIRECT);       // set the PID direction
+    if (mode) {                             // for COOL
+      SetControllerDirection(REVERSE);      // set the PID direction
+//      Serial.println("Cooling on");
       analogWrite(outPin, 0);               // turn off the current while the relays swtich
-      digitalWrite(ncPos, HIGH);            // switch the relays away from their normal closed state to the alternate
-      digitalWrite(ncNeg, HIGH);
+      digitalWrite(ncPos, LOW);            // switch the relays away from their normal closed state to the alternate
+      digitalWrite(ncNeg, LOW);
       delay(1000);                          // wait for the relay to work
       analogWrite(outPin, pidOutput);       // before applying the PID again
     }
     else {
-      SetControllerDirection(REVERSE);      // for COOL, do the same procedue to set the relays back to their normally closed path
-      digitalWrite(ncPos, LOW);
-      digitalWrite(ncNeg, LOW);
+      SetControllerDirection(DIRECT);      // for WARM, do the same procedue to set the relays back to their normally closed path
+//      Serial.println("Heating on");
+      analogWrite(outPin, 0);              // turn off the current while the relays swtich
+      digitalWrite(ncPos, HIGH);
+      digitalWrite(ncNeg, HIGH);
       delay(1000);
       analogWrite(outPin, pidOutput);
     }
@@ -472,8 +486,8 @@ class Rtclock: public RTC_PCF8523 {
 
 Rtclock RTC = Rtclock();                          // initialize the RTC
 Fan CPUfan = Fan(3);                              // initialize the fan (pin)
-Peltier Heatercooler = Peltier(5, 7, 6, 2, 21);   // initialize the peltier (PWM control pin, relay NC + pin, relay NC - pin, update frequency [sec], set point [C])
-Tempsensor Tempbreakout = Tempsensor(2);          // initialize the sensor (update frequency [sec])
+Peltier Heatercooler = Peltier(5, 7, 6, 500, 22);   // initialize the peltier (PWM control pin, relay NC + pin, relay NC - pin, update frequency [millisec], set point [C])
+Tempsensor Tempbreakout = Tempsensor(250);          // initialize the sensor (update frequency [millisec])
 Lightsensor Luxbreakout = Lightsensor(5);         // initialize the sensor (update frequency [sec])
 Ledbar Lights = Ledbar(9, 30, 3800);              // initialize the lights (pin, update frequency [sec], set point [lux])
 Sdlogger Logger = Sdlogger(10, 2);                // initialize the SD card (CS pin, update frequency [sec])
@@ -554,5 +568,5 @@ void loop () {
   // below the OLED screen is updated with information
 //   Display.Update(&RTC.event, &Luxbreakout.event.light, &Lights.setLux, &Tempbreakout.temp, &Heatercooler.setPoint);
   
-  Lights.set_night(4, 12, RTC.event.hour());  // toggle the night at midnight and toggle it back at 4AM
+  Lights.set_night(3, 11, RTC.event.hour());  // toggle the night at midnight and toggle it back at 4AM
 }

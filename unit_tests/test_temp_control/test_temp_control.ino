@@ -137,42 +137,55 @@ class Peltier: public PID {
 //      Serial.print("update triggered"); Serial.println();
 //      Serial.print("gap = "); Serial.println(gap);
       
-      if (gap < -0.5  && pidOutput == 0) {
+      if (gap < -2  && pidOutput == 0) {
         toggle_heat(WARM);
       }
-      else if (gap > 0.5 && pidOutput == 0) {
+      else if (gap > 2 && pidOutput == 0) {
         toggle_heat(COOL);
       }
-      
-      if (abs(gap) > 1.5) {
+
+/*      
+      if (gap > 10) {
         pidOutput = 255;
+        toggle_heat(COOL);
+      }
+      else if (gap < -5) {
+        pidOutput = 255;
+        toggle_heat(WARM);
       }
       else {
-        Compute();
-//        bool test = Compute();
-//        Serial.print("PWM output = "); Serial.println(pidOutput);
-//        Serial.print("Did compute run?: "); Serial.println(test);
+*/      
+//        Compute();
+        bool test = Compute();
+        Serial.print("PWM output = "); Serial.println(pidOutput);
+        Serial.print("Did compute run?: "); Serial.println(test);
+        Serial.print("PID direction = "); Serial.println(GetDirection());
 //        Serial.print("Kp (via function): "); Serial.println(GetKp());
 //        Serial.print("Kp (via variable call): "); Serial.println(Kp);
-      }
+//      }
       
       analogWrite(outPin, pidOutput);
+      Serial.print("PWM Input = "); Serial.println(pidInput);
+
     }
   }
 
   void toggle_heat(bool mode) {
-    if (!mode) {                            // for WARM
-      SetControllerDirection(DIRECT);       // set the PID direction
+    if (mode) {                             // for COOL
+      SetControllerDirection(REVERSE);      // set the PID direction
+      Serial.println("Cooling on");
       analogWrite(outPin, 0);               // turn off the current while the relays swtich
-      digitalWrite(ncPos, HIGH);            // switch the relays away from their normal closed state to the alternate
-      digitalWrite(ncNeg, HIGH);
+      digitalWrite(ncPos, LOW);            // switch the relays away from their normal closed state to the alternate
+      digitalWrite(ncNeg, LOW);
       delay(1000);                          // wait for the relay to work
       analogWrite(outPin, pidOutput);       // before applying the PID again
     }
     else {
-      SetControllerDirection(REVERSE);      // for COOL, do the same procedue to set the relays back to their normally closed path
-      digitalWrite(ncPos, LOW);
-      digitalWrite(ncNeg, LOW);
+      SetControllerDirection(DIRECT);      // for WARM, do the same procedue to set the relays back to their normally closed path
+      Serial.println("Heating on");
+      analogWrite(outPin, 0);              // turn off the current while the relays swtich
+      digitalWrite(ncPos, HIGH);
+      digitalWrite(ncNeg, HIGH);
       delay(1000);
       analogWrite(outPin, pidOutput);
     }
@@ -193,7 +206,7 @@ class Peltier: public PID {
 };
 
 Fan testfan = Fan(3);                        // initialize the fan (pin)
-Peltier testpeltier = Peltier(5, 7, 6, 2, 21);     // initialize the peltier (pin, postive relay pin, negative relay pin, update in sec, set point)
+Peltier testpeltier = Peltier(5, 7, 6, 2, 22);     // initialize the peltier (pin, postive relay pin, negative relay pin, update in sec, set point)
 Tempsensor testsensor = Tempsensor(2);       // initialize the sensor (update in sec)
 
 
@@ -263,7 +276,7 @@ void loop() {
   testsensor.Update();
 //  testsensor.testprint();
 //  Serial.print("tick tick tick"); Serial.println();
-  testpeltier.testprint();
+//  testpeltier.testprint();
   testpeltier.Update(testsensor);
   testfan.set_speed(testpeltier.pidOutput);
 }
