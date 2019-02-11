@@ -47,7 +47,7 @@ class Tempsensor: public Adafruit_SHT31 {
     if((currentMillis - lastUpdate) >= (readInterval * 1000)) {
       lastUpdate = millis();
       temp = readTemperature();
-      humidity h = readHumidity();
+      humidity = readHumidity();
     }
   }
 
@@ -73,9 +73,11 @@ void setup() {
  *prevent a floating pin which can casues issues
  *
  */
-  pinMode(4, OUTPUT);
+  pinMode(9, OUTPUT);
   pinMode(5, OUTPUT);
   pinMode(3, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(7, OUTPUT);
   
   Serial.begin(9600);
 

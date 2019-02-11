@@ -30,7 +30,7 @@ class Lightsensor: public Adafruit_TSL2561_Unified {
     }
 
   void Configure() {
-    enableAutoRange(true);                                       // set the gain to automatic
+//    enableAutoRange(true);                                       // set the gain to automatic
     setIntegrationTime(TSL2561_INTEGRATIONTIME_101MS);           // set the medium resolution and speed 
   }
 
@@ -73,49 +73,68 @@ class Ledbar {
 
   void Configure() {
     pinMode(outPin, OUTPUT);
+    analogWrite(outPin, outPwm);
   }
 
-  void toggle_night() {
-    night = ~night;
+  void set_night(unsigned long dusk, unsigned long dawn, unsigned long present) {
+    if (present >= dusk && present <= dawn) {
+      analogWrite(outPin, 0);
+      night = true;
+    }
+    else {
+      analogWrite(outPin, outPwm);
+      night = false;
+    }
   }
 
   void Update(Lightsensor sensor) {
     unsigned long currentMillis = millis();
     unsigned int measuredLux = sensor.Readlux();
 
-    if((currentMillis - lastUpdate) >= (setInterval * 1000)) {    
-      if (night == false) {
-        while (setLux < measuredLux) {
-          analogWrite(outPin, ++outPwm);
-          measuredLux = sensor.Readlux();
-//          delay(1000);
-          Serial.print(setLux - measuredLux); Serial.println(": going up");
-        }
-        while (setLux > measuredLux) {
+    if((currentMillis - lastUpdate) >= (setInterval * 1000)) {                       // if the time is right to update
+      lastUpdate = millis();
+//      Serial.println("inside first if");    
+      if (night == false) {                                                          // [and] if the night is not toggled
+//        Serial.println(setLux < measuredLux);
+//        Serial.println(setLux > measuredLux);
+//        Serial.println(abs(setLux - measuredLux));
+//        Serial.println(abs(setLux - measuredLux) >= 20);
+        while ((setLux < measuredLux) && (abs(setLux - measuredLux) >= 20)) {       // adjust the PWM on the transistor for the LED downwards if the light are too high
           analogWrite(outPin, --outPwm);
           measuredLux = sensor.Readlux();
 //          delay(1000);
-          Serial.print(setLux -  measuredLux); Serial.println(": going dowm");
+          Serial.print(measuredLux); Serial.println(": going down");
         }
-      }  
+        while ((setLux > measuredLux) && (abs(setLux - measuredLux) >= 20)) {       // adjust the PWM on the transistor for the LED upward if the lights are too low
+          analogWrite(outPin, ++outPwm);
+          measuredLux = sensor.Readlux();
+//          delay(1000);
+          Serial.print(measuredLux); Serial.println(": going up");
+        }
+      }
     }
   }
   
 };
 
 
-Lightsensor testsensor = Lightsensor(2);    // initialize the sensor
-Ledbar lights = Ledbar(9, 10, 2000);              // initialize the lights
+Lightsensor testsensor = Lightsensor(5);    // initialize the sensor
+Ledbar lights = Ledbar(9, 30, 4000);        // initialize the lights
 
 void setup() {
 
-  pinMode(5, OUTPUT);
   pinMode(3, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(7, OUTPUT);
   Serial.begin(9600);
   
   while (!Serial)
     delay(10);     // will pause Zero, Leonardo, etc until serial console opens
 
+  Serial.println("COnfigure the sensor and start the lights");
+  testsensor.Configure();  // configure the sensor before the lights!
+  delay(1000);
+  lights.Configure();
   Serial.println("LED testing begins now");
   lights.Configure();
   testsensor.Configure();
@@ -125,7 +144,9 @@ void setup() {
 void loop() {
   testsensor.testprint();
   testsensor.Update();
-//  digitalWrite(9, 255);
-  Serial.print("lux = "); Serial.println(testsensor.Readlux());
+//  Serial.print("lux = "); Serial.println(testsensor.Readlux());
   lights.Update(testsensor);
+  unsigned long nighttime = millis();
+  lights.set_night(40000, 70000, nighttime);
+//  Serial.println("night toggled");
 }

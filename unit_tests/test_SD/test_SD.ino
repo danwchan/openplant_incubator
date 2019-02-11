@@ -1,4 +1,4 @@
-/*
+  /*
   SD card test
 
   This example shows how use the utility libraries on which the'
@@ -22,18 +22,97 @@
 // include the SD library:
 #include <SPI.h>
 #include <SD.h>
+// inlclude the RTC libraries
+#include <Wire.h>
+#include "RTClib.h"
 
 // set up variables using the SD utility library functions:
 Sd2Card card;
 SdVolume volume;
 SdFile root;
+//
+byte chipPin = 10;
 
-// change this to match your SD shield or module;
-// Arduino Ethernet shield: pin 4
-// Adafruit SD shields and modules: pin 10
-// Sparkfun SD shield: pin 8
-// MKRZero SD: SDCARD_SS_PIN
-const int chipSelect = 10;
+class Rtclock: public RTC_PCF8523 {
+  private:
+    byte readInterval;            // the time in seconds between readings
+
+  public:
+    DateTime event;        // a structure defined in the RTC library which contains the time
+/*
+ *Constructor, also calls the base class constrcutor
+ *
+ */   
+  Rtclock() {
+  }
+
+  String getTime() {
+    event = now();
+    char buffer[18];
+    snprintf(buffer, 18, "%04d%02d%02d_%02d:%02d:%02d", event.year(), event.month(), event.day(), event.hour(), event.minute(), event.second());
+    return buffer;
+  }
+
+  void Configure() {
+    begin();
+    adjust(DateTime(F(__DATE__), F(__TIME__)));
+  }
+};
+
+
+class Sdlogger: public SDClass {
+  private:
+    byte readInterval;
+    byte chipSelect;
+    unsigned long lastUpdate;
+
+  public:
+
+  Sdlogger(byte pin, byte seconds){
+    chipSelect = pin;
+    readInterval = seconds;
+    lastUpdate = millis();
+  }
+
+  void Configure() {
+    // see if the card is present and can be initialized:
+    if (!begin(chipSelect)) {
+      Serial.println("Card failed, or not present");
+      // don't do anything more:
+      while (1);
+    }
+  }
+
+  bool Update(String timeID, float *temp, float *humidity, float *lux, double *pidOutput) {
+    unsigned long currentMillis = millis();
+
+    if((currentMillis - lastUpdate) >= (readInterval * 1000)) {
+      lastUpdate = millis();
+      String fileName = timeID.substring(2,8);
+      fileName += ".log";
+      File dataFile = open(fileName, FILE_WRITE);
+//      Serial.println(fileName);     
+      
+      if (dataFile) {                                                // if the file is available, write to it:
+//        Serial.println("writing...");
+        dataFile.print(timeID); dataFile.print(", ");
+        dataFile.print(*temp); dataFile.print(", ");
+        dataFile.print(*humidity); dataFile.print(", ");
+        dataFile.print(*lux); dataFile.print(", ");
+        dataFile.println(*pidOutput);
+        dataFile.close();
+        return true;
+      }
+      else {                                                         // if the file isn't open, pop up an error:
+        return false;
+      }
+    }
+    return false;
+  }
+};
+
+Sdlogger testlogger = Sdlogger(10, 5);
+Rtclock testclock = Rtclock();
 
 void setup() {
   // Open serial communications and wait for port to open:
@@ -42,12 +121,23 @@ void setup() {
     ; // wait for serial port to connect. Needed for native USB port only
   }
 
+  pinMode(9, OUTPUT);
+  pinMode(5, OUTPUT);
+  pinMode(3, OUTPUT);
 
+  testclock.Configure();
+  Serial.println("clock variable set");
+  if (! testclock.begin()) {
+    Serial.println("Couldn't find RTC");
+    while (1);
+  }
+  /*
   Serial.print("\nInitializing SD card...");
 
   // we'll use the initialization code from the utility libraries
   // since we're just testing if the card is working!
-  if (!card.init(SPI_HALF_SPEED, chipSelect)) {
+  
+  if (!card.init(SPI_HALF_SPEED, chipPin)) {
     Serial.println("initialization failed. Things to check:");
     Serial.println("* is a card inserted?");
     Serial.println("* is your wiring correct?");
@@ -110,7 +200,19 @@ void setup() {
 
   // list all files in the card with date and size
   root.ls(LS_R | LS_DATE | LS_SIZE);
+  */
+
+  //configure the SD logger class
+  testlogger.Configure();
 }
 
 void loop(void) {
+  float temp = 666.00;
+  float humidity = 0.01;
+  float lux = 1234.56;
+  double pidOutput = 999;
+  
+  if (testlogger.Update(testclock.getTime(), &temp, &humidity, &lux, &pidOutput)) {
+    Serial.println("file written");
+  }
 }

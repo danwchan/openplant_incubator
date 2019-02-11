@@ -1,0 +1,55 @@
+apple g5 power supply
+AcBell
+
+API2FS34
+ID: 291
+DATE: B0434
+REV: E
+APPLE P/N: 614-0303
+
+3 power things
+labelled from plug to fan side 1-3
+
+(P3) - 8 pins
+
+MAP (clip at the bottom)
+=========
+
+__ __ __ __
+
+Y1 B1 B3 R1
+Y2 B2 B4 R2
+__ __ __ __
+   _____
+
+Y = +12
+R = +5V
+B = GND
+   
+   
+(P2) - 20 pins
+
+__ __ __ __ __ __ __ __ __ __ __
+
+B1 B3 O1 B5 Y1 B7 -- 10 W1 12 P1
+B2 U1 B4 R1 B6 B8 B9 -- 11 G1 13
+__ __ __ __ __ __ __ __ __ __ __
+             _____
+
+U = -12
+O = +3.3
+R = +5
+Y = +12
+W = ? variable voltages
+G = load wire
+P = +5
+
+(P1) - 15 pins
+
+__ __ __ __ __ __ __ __
+
+W1 Y1 Y3 -- O1 O2 O3 O4
+B1 Y2 Y4 Y5 Y6 R1 R2 R3
+__ __ __ __ __ __ __ __
+         _____
+

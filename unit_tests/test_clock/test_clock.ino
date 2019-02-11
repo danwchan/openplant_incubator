@@ -7,78 +7,57 @@
    #define Serial SerialUSB
 #endif
 
-RTC_PCF8523 rtc;
 
-char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+class Rtclock: public RTC_PCF8523 {
+  private:
+    byte readInterval;            // the time in seconds between readings
+
+  public:
+    DateTime event;        // a structure defined in the RTC library which contains the time
+/*
+ *Constructor, also calls the base class constrcutor
+ *
+ */   
+  Rtclock() {
+  }
+
+  String getTime() {
+    event = now();
+    char buffer[18];
+    snprintf(buffer, 18, "%04d%02d%02d_%02d:%02d:%02d", event.year(), event.month(), event.day(), event.hour(), event.minute(), event.second());
+    return buffer;
+  }
+
+  void Configure() {
+    begin();
+    adjust(DateTime(F(__DATE__), F(__TIME__)));
+  }
+};
+
+Rtclock testclock = Rtclock();
 
 void setup () {
-  pinMode(4, OUTPUT);
+  pinMode(9, OUTPUT);
   pinMode(5, OUTPUT);
   pinMode(3, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(7, OUTPUT);
   
 #ifndef ESP8266
   while (!Serial); // for Leonardo/Micro/Zero
 #endif
 
   Serial.begin(9600);
-  if (! rtc.begin()) {
+
+  testclock.Configure();
+  Serial.println("clock variable set");
+  if (! testclock.begin()) {
     Serial.println("Couldn't find RTC");
     while (1);
-  }
-
-  delay(10);
-  
-  if (! rtc.initialized()) {
-    Serial.println("RTC is NOT running!");
-    // following line sets the RTC to the date & time this sketch was compiled
-    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-    // This line sets the RTC with an explicit date & time, for example to set
-    // January 21, 2014 at 3am you would call:
-    // rtc.adjust(DateTime(2018, 6, 14, 3, 22, 45));
   }
 }
 
 void loop () {
-    DateTime now = rtc.now();
-    
-    Serial.print(now.year(), DEC);
-    Serial.print('/');
-    Serial.print(now.month(), DEC);
-    Serial.print('/');
-    Serial.print(now.day(), DEC);
-    Serial.print(" (");
-    Serial.print(daysOfTheWeek[now.dayOfTheWeek()]);
-    Serial.print(") ");
-    Serial.print(now.hour(), DEC);
-    Serial.print(':');
-    Serial.print(now.minute(), DEC);
-    Serial.print(':');
-    Serial.print(now.second(), DEC);
-    Serial.println();
-    
-    Serial.print(" since midnight 1/1/1970 = ");
-    Serial.print(now.unixtime());
-    Serial.print("s = ");
-    Serial.print(now.unixtime() / 86400L);
-    Serial.println("d");
-    
-    // calculate a date which is 7 days and 30 seconds into the future
-    DateTime future (now + TimeSpan(7,12,30,6));
-    
-    Serial.print(" now + 7d + 30s: ");
-    Serial.print(future.year(), DEC);
-    Serial.print('/');
-    Serial.print(future.month(), DEC);
-    Serial.print('/');
-    Serial.print(future.day(), DEC);
-    Serial.print(' ');
-    Serial.print(future.hour(), DEC);
-    Serial.print(':');
-    Serial.print(future.minute(), DEC);
-    Serial.print(':');
-    Serial.print(future.second(), DEC);
-    Serial.println();
-    
-    Serial.println();
+    Serial.println(testclock.getTime());
     delay(3000);
 }
